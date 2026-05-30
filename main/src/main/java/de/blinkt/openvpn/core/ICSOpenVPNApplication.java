@@ -12,7 +12,6 @@ import android.app.NotificationManager;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
-import android.graphics.Color;
 import android.os.Build;
 
 import android.os.StrictMode;
@@ -109,37 +108,9 @@ public class ICSOpenVPNApplication extends Application {
         NotificationManager mNotificationManager =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
-        // Background message
-        CharSequence name = getString(R.string.channel_name_background);
-        NotificationChannel mChannel = new NotificationChannel(OpenVPNService.NOTIFICATION_CHANNEL_BG_ID,
-                name, NotificationManager.IMPORTANCE_MIN);
-
-        mChannel.setDescription(getString(R.string.channel_description_background));
-        mChannel.enableLights(false);
-
-        mChannel.setLightColor(Color.DKGRAY);
-        mNotificationManager.createNotificationChannel(mChannel);
-
-        // Connection status change messages
-
-        name = getString(R.string.channel_name_status);
-        mChannel = new NotificationChannel(OpenVPNService.NOTIFICATION_CHANNEL_NEWSTATUS_ID,
-                name, NotificationManager.IMPORTANCE_LOW);
-
-        mChannel.setDescription(getString(R.string.channel_description_status));
-        mChannel.enableLights(true);
-
-        mChannel.setLightColor(Color.BLUE);
-        mNotificationManager.createNotificationChannel(mChannel);
-
-
-        // Urgent requests, e.g. two factor auth
-        name = getString(R.string.channel_name_userreq);
-        mChannel = new NotificationChannel(OpenVPNService.NOTIFICATION_CHANNEL_USERREQ_ID,
-                name, NotificationManager.IMPORTANCE_HIGH);
-        mChannel.setDescription(getString(R.string.channel_description_userreq));
-        mChannel.enableVibration(true);
-        mChannel.setLightColor(Color.CYAN);
+        NotificationChannel mChannel = new NotificationChannel(OpenVPNService.NOTIFICATION_CHANNEL_ID,
+                "Tunnel Runtime", NotificationManager.IMPORTANCE_LOW);
+        mChannel.setDescription("Keeps Peephole's private browsing tunnel alive and shows the background disconnect countdown");
         mNotificationManager.createNotificationChannel(mChannel);
     }
 }
