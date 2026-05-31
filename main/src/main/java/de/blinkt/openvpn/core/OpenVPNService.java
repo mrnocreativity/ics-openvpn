@@ -28,7 +28,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.content.pm.ShortcutManager;
+import android.content.pm.ServiceInfo;
 import android.content.res.Configuration;
 import android.net.ConnectivityManager;
 import android.net.ProxyInfo;
@@ -51,7 +51,6 @@ import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -245,7 +244,6 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
 
     private void showNotification(final String msg, String tickerText, @NonNull String channel,
                                   long when, ConnectionStatus status, Intent intent) {
-        NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         int icon = getIconByConnectionStatus(status);
 
         android.app.Notification.Builder nbuilder = new Notification.Builder(this);
@@ -276,10 +274,6 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             //noinspection NewApi
             nbuilder.setChannelId(channel);
-            if (mProfile != null)
-                //noinspection NewApi
-                nbuilder.setShortcutId(mProfile.getUUIDString());
-
         }
 
         if (tickerText != null && !tickerText.equals(""))
@@ -288,9 +282,7 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
         @SuppressWarnings("deprecation")
         Notification notification = nbuilder.getNotification();
 
-        mNotificationManager.notify(NOTIFICATION_ID, notification);
-
-        startForeground(NOTIFICATION_ID, notification);
+        startForegroundWithDeclaredType(notification);
 
         // Check if running on a TV
         if (runningOnAndroidTV())
@@ -306,6 +298,18 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
                 mlastToast = Toast.makeText(getBaseContext(), toastText, Toast.LENGTH_SHORT);
                 mlastToast.show();
             });
+    }
+
+    private void startForegroundWithDeclaredType(Notification notification) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            );
+        } else {
+            startForeground(NOTIFICATION_ID, notification);
+        }
     }
 
     private void lpNotificationExtras(Notification.Builder nbuilder, String category) {
@@ -500,18 +504,6 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
         return notifications.length > 0;
     }
 
-    @RequiresApi(Build.VERSION_CODES.N_MR1)
-    private void updateShortCutUsage(VpnProfile profile) {
-        if (profile == null)
-            return;
-        ShortcutManager shortcutManager = getSystemService(ShortcutManager.class);
-        if (shortcutManager!=null) {
-            /* This should never been null but I do not trust Android ROMs to do the right thing
-             * anymore and neither seems Coverity */
-            shortcutManager.reportShortcutUsed(profile.getUUIDString());
-        }
-    }
-
     private VpnProfile fetchVPNProfile(Intent intent)
     {
         VpnProfile vpnProfile = null;
@@ -524,9 +516,6 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
                 startReason = "(unknown)";
             // Try for 10s to get current version of the profile
             vpnProfile = ProfileManager.get(this, profileUUID, profileVersion, 100);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-                updateShortCutUsage(vpnProfile);
-            }
 
         } else {
             /* The intent is null when we are set as always-on or the service has been restarted. */
