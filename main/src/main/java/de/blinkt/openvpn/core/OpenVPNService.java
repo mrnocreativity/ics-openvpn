@@ -8,7 +8,11 @@ package de.blinkt.openvpn.core;
 import static android.content.Intent.FLAG_ACTIVITY_NEW_TASK;
 import static de.blinkt.openvpn.VpnProfile.EXTRA_PROFILEUUID;
 import static de.blinkt.openvpn.VpnProfile.EXTRA_PROFILE_VERSION;
+import static de.blinkt.openvpn.core.ConnectionStatus.LEVEL_AUTH_FAILED;
 import static de.blinkt.openvpn.core.ConnectionStatus.LEVEL_CONNECTED;
+import static de.blinkt.openvpn.core.ConnectionStatus.LEVEL_NONETWORK;
+import static de.blinkt.openvpn.core.ConnectionStatus.LEVEL_NOTCONNECTED;
+import static de.blinkt.openvpn.core.ConnectionStatus.LEVEL_VPNPAUSED;
 import static de.blinkt.openvpn.core.ConnectionStatus.LEVEL_WAITING_FOR_USER_INPUT;
 import static de.blinkt.openvpn.core.NetworkSpace.IpAddress;
 
@@ -78,6 +82,7 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
     public static final String EXTRA_START_REASON = "de.blinkt.openvpn.startReason";
 
     public static final String NOTIFICATION_CHANNEL_ID = "peephole_tunnel_runtime";
+    public static final int NOTIFICATION_ID = 22051;
     private static final String PEEPHOLE_MAIN_ACTIVITY = "com.nocreativity.app.peephole.ui.MainActivity";
     private static final String PEEPHOLE_RUNTIME_SERVICE = "com.nocreativity.app.peephole.runtime.TunnelRuntimeService";
     private static final String PEEPHOLE_RUNTIME_DISCONNECT = "com.nocreativity.app.peephole.runtime.ACTION_DISCONNECT";
@@ -106,7 +111,6 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
     private TunConfig tunConfig = new TunConfig();
 
     private final Object mProcessLock = new Object();
-    private String lastChannel;
     private Thread mProcessThread = null;
     private VpnProfile mProfile;
 
@@ -248,10 +252,7 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
 
         nbuilder.setContentTitle("Peephole tunnel");
 
-        if (status == LEVEL_CONNECTED)
-            nbuilder.setContentText("Tunnel active");
-        else
-            nbuilder.setContentText(msg);
+        nbuilder.setContentText(getNotificationText(status));
         nbuilder.setOnlyAlertOnce(true);
         nbuilder.setOngoing(true);
 
@@ -268,7 +269,7 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
 
 
         // Try to set the priority available since API 16 (Jellybean)
-        jbNotificationExtras(PRIORITY_DEFAULT, nbuilder);
+        jbNotificationExtras(getNotificationPriority(status), nbuilder);
         addVpnActionsToNotification(nbuilder);
         lpNotificationExtras(nbuilder, Notification.CATEGORY_SERVICE);
 
@@ -287,16 +288,9 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
         @SuppressWarnings("deprecation")
         Notification notification = nbuilder.getNotification();
 
-        int notificationId = channel.hashCode();
+        mNotificationManager.notify(NOTIFICATION_ID, notification);
 
-        mNotificationManager.notify(notificationId, notification);
-
-        startForeground(notificationId, notification);
-
-        if (lastChannel != null && !channel.equals(lastChannel)) {
-            // Cancel old notification
-            mNotificationManager.cancel(lastChannel.hashCode());
-        }
+        startForeground(NOTIFICATION_ID, notification);
 
         // Check if running on a TV
         if (runningOnAndroidTV())
@@ -374,6 +368,32 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
 
         nbuilder.addAction(R.drawable.ic_menu_close_clear_cancel,
                 getString(R.string.cancel_connection), disconnectPendingIntent);
+    }
+
+    private String getNotificationText(ConnectionStatus status) {
+        switch (status) {
+            case LEVEL_CONNECTED:
+                return "Tunnel active";
+            case LEVEL_WAITING_FOR_USER_INPUT:
+                return "Authentication requires action";
+            case LEVEL_AUTH_FAILED:
+                return "Authentication failed";
+            case LEVEL_NONETWORK:
+                return "No network available for tunnel";
+            case LEVEL_NOTCONNECTED:
+                return "Tunnel disconnected";
+            case LEVEL_VPNPAUSED:
+                return "Tunnel paused";
+            default:
+                return "Connecting tunnel";
+        }
+    }
+
+    private int getNotificationPriority(ConnectionStatus status) {
+        if (status == LEVEL_WAITING_FOR_USER_INPUT || status == LEVEL_AUTH_FAILED) {
+            return PRIORITY_MAX;
+        }
+        return PRIORITY_DEFAULT;
     }
 
     PendingIntent getUserInputIntent(String needed) {
@@ -1394,8 +1414,6 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
         Notification notification = nbuilder.getNotification();
 
 
-        int notificationId = channel.hashCode();
-
-        mNotificationManager.notify(notificationId, notification);
+        mNotificationManager.notify(NOTIFICATION_ID, notification);
     }
 }
