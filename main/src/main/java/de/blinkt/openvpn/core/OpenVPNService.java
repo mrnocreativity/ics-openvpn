@@ -251,8 +251,6 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
 
     private void showNotification(final String msg, String tickerText, @NonNull String channel,
                                   long when, ConnectionStatus status, Intent intent) {
-        int icon = getIconByConnectionStatus(status);
-
         android.app.Notification.Builder nbuilder = new Notification.Builder(this);
 
         nbuilder.setContentTitle("Peephole tunnel");
@@ -261,7 +259,7 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
         nbuilder.setOnlyAlertOnce(true);
         nbuilder.setOngoing(true);
 
-        nbuilder.setSmallIcon(icon);
+        nbuilder.setSmallIcon(R.drawable.ic_stat_peephole);
         if (status == LEVEL_WAITING_FOR_USER_INPUT && intent != null) {
             PendingIntent pIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
             nbuilder.setContentIntent(pIntent);
@@ -328,28 +326,6 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
     private boolean runningOnAndroidTV() {
         UiModeManager uiModeManager = (UiModeManager) getSystemService(UI_MODE_SERVICE);
         return uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
-    }
-
-    private int getIconByConnectionStatus(ConnectionStatus level) {
-        switch (level) {
-            case LEVEL_CONNECTED:
-                return R.drawable.ic_stat_vpn;
-            case LEVEL_AUTH_FAILED:
-            case LEVEL_NONETWORK:
-            case LEVEL_NOTCONNECTED:
-                return R.drawable.ic_stat_vpn_offline;
-            case LEVEL_CONNECTING_NO_SERVER_REPLY_YET:
-            case LEVEL_WAITING_FOR_USER_INPUT:
-                return R.drawable.ic_stat_vpn_outline;
-            case LEVEL_CONNECTING_SERVER_REPLIED:
-                return R.drawable.ic_stat_vpn_empty_halo;
-            case LEVEL_VPNPAUSED:
-                return android.R.drawable.ic_media_pause;
-            case UNKNOWN_LEVEL:
-            default:
-                return R.drawable.ic_stat_vpn;
-
-        }
     }
 
     private void jbNotificationExtras(int priority,
