@@ -233,13 +233,20 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
         ProfileManager.setConntectedVpnProfileDisconnected(this);
         mOpenVPNThread = null;
         if (!mStarting) {
-            stopForeground(!mNotificationAlwaysVisible);
+            clearTunnelNotification();
 
             if (!mNotificationAlwaysVisible) {
                 stopSelf();
                 VpnStatus.removeStateListener(this);
             }
         }
+    }
+
+    private void clearTunnelNotification() {
+        stopForeground(true);
+        NotificationManager notificationManager =
+                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.cancel(NOTIFICATION_ID);
     }
 
     private void showNotification(final String msg, String tickerText, @NonNull String channel,
@@ -1259,6 +1266,11 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
         // Notification should be invisible in this state
 
         doSendBroadcast(state, level);
+        if (level == LEVEL_NOTCONNECTED) {
+            clearTunnelNotification();
+            return;
+        }
+
         if (mProcessThread == null && !mNotificationAlwaysVisible)
             return;
 
